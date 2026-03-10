@@ -23,3 +23,4 @@ A backend system for managing clinic appointments with conflict detection, waitl
 docker compose up -d
 mvn spring-boot:run
 
+
