@@ -35,6 +35,11 @@ public class AppointmentController {
         return clinicService.scheduleAppointment(dto);
     }
 
+    @GetMapping("/{id}")
+    public AppointmentResponseDTO getAppointmentById(@PathVariable UUID id) {
+        return clinicService.getAppointmentById(id);
+    }
+
     @GetMapping
     public Page<AppointmentResponseDTO> getAppointments(
             @RequestParam(required = false) String clinicianName,

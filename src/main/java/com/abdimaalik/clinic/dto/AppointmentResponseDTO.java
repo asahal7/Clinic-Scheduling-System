@@ -1,12 +1,15 @@
 package com.abdimaalik.clinic.dto;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.abdimaalik.clinic.domain.AppointmentStatus;
 
-public class AppointmentResponseDTO {
+public class AppointmentResponseDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private UUID id;
     private String patientName;

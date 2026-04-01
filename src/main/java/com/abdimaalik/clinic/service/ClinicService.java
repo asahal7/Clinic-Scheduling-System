@@ -3,6 +3,8 @@ package com.abdimaalik.clinic.service;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,12 @@ public class ClinicService {
         this.appointmentRepository = appointmentRepository;
     }
 
+    @Cacheable(value = "appointments", key = "#appointmentId")
+    public AppointmentResponseDTO getAppointmentById(UUID appointmentId) {
+        System.out.println("Fetching appointment from database...");
+        return toResponseDTO(getAppointmentOrThrow(appointmentId));
+    }
+
     public AppointmentResponseDTO scheduleAppointment(AppointmentDTO dto) {
         validateAppointment(dto);
         validateNoOverlap(dto);
@@ -38,6 +46,7 @@ public class ClinicService {
         return toResponseDTO(appointmentRepository.save(appointment));
     }
 
+    @CachePut(value = "appointments", key = "#appointmentId")
     public AppointmentResponseDTO cancelAppointment(UUID appointmentId) {
         Appointment appointment = getAppointmentOrThrow(appointmentId);
 
@@ -57,6 +66,7 @@ public class ClinicService {
         return toResponseDTO(appointmentRepository.save(appointment));
     }
 
+    @CachePut(value = "appointments", key = "#appointmentId")
     public AppointmentResponseDTO completeAppointment(UUID appointmentId) {
         Appointment appointment = getAppointmentOrThrow(appointmentId);
 
@@ -76,6 +86,7 @@ public class ClinicService {
         return toResponseDTO(appointmentRepository.save(appointment));
     }
 
+    @CachePut(value = "appointments", key = "#appointmentId")
     public AppointmentResponseDTO markNoShow(UUID appointmentId) {
         Appointment appointment = getAppointmentOrThrow(appointmentId);
 

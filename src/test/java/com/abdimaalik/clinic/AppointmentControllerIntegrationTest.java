@@ -1,30 +1,30 @@
 package com.abdimaalik.clinic;
 
+import java.math.BigDecimal;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.math.BigDecimal;
-
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
+import com.abdimaalik.clinic.repository.AppointmentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestMethodOrder(OrderAnnotation.class)
 class AppointmentControllerIntegrationTest {
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
 
     @Autowired
     private MockMvc mockMvc;
@@ -32,11 +32,12 @@ class AppointmentControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private static String appointmentId;
+    @BeforeEach
+    void cleanDatabase() {
+        appointmentRepository.deleteAll();
+    }
 
-    @Test
-    @Order(1)
-    void shouldScheduleAppointmentSuccessfully() throws Exception {
+    private String createAppointmentAndReturnId() throws Exception {
         String requestBody = """
                 {
                   "patientName": "Ali Hassan",
@@ -60,13 +61,19 @@ class AppointmentControllerIntegrationTest {
                 .getContentAsString();
 
         JsonNode jsonNode = objectMapper.readTree(response);
-        appointmentId = jsonNode.get("id").asText();
+        return jsonNode.get("id").asText();
     }
 
     @Test
-    @Order(2)
+    void shouldScheduleAppointmentSuccessfully() throws Exception {
+        createAppointmentAndReturnId();
+    }
+
+    @Test
     void shouldRejectOverlappingAppointment() throws Exception {
-        String requestBody = """
+        createAppointmentAndReturnId();
+
+        String overlappingRequestBody = """
                 {
                   "patientName": "Sara Khan",
                   "clinicianName": "Dr Brown",
@@ -78,24 +85,30 @@ class AppointmentControllerIntegrationTest {
 
         mockMvc.perform(post("/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(overlappingRequestBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("Appointment overlaps with an existing active appointment for this clinician."));
     }
 
     @Test
-    @Order(3)
     void shouldCancelAppointmentSuccessfully() throws Exception {
+        String appointmentId = createAppointmentAndReturnId();
+
         mockMvc.perform(patch("/appointments/" + appointmentId + "/cancel"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 
     @Test
-    @Order(4)
     void shouldAllowRebookingAfterCancellation() throws Exception {
-        String requestBody = """
+        String appointmentId = createAppointmentAndReturnId();
+
+        mockMvc.perform(patch("/appointments/" + appointmentId + "/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        String rebookingRequestBody = """
                 {
                   "patientName": "Sara Khan",
                   "clinicianName": "Dr Brown",
@@ -107,14 +120,15 @@ class AppointmentControllerIntegrationTest {
 
         mockMvc.perform(post("/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(rebookingRequestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
     }
 
     @Test
-    @Order(5)
     void shouldReturnPaginatedAppointments() throws Exception {
+        createAppointmentAndReturnId();
+
         mockMvc.perform(get("/appointments?page=0&size=5&sortBy=startTime&direction=asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
