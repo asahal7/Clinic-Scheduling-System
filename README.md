@@ -55,12 +55,38 @@ Controller Layer │ ▼ Service Layer (business logic) │ ▼ Repo
 | Exception Handler | Centralised API error responses |
 
 ---
+## 📂 Project Structure
 
-# 📂 Project Structure
+```text
+src/
+└── main/
+    └── java/com/abdimaalik/clinic/
+        ├── controller/
+        │   ├── AppointmentController.java
+        │   └── GlobalExceptionHandler.java
+        │
+        ├── service/
+        │   └── ClinicService.java
+        │
+        ├── repository/
+        │   └── AppointmentRepository.java
+        │
+        ├── domain/
+        │   └── Appointment.java
+        │
+        ├── dto/
+        │   ├── AppointmentResponseDTO.java
+        │   └── ErrorResponse.java
+        │
+        └── ClinicSchedulingApplication.java
 
-src └── main └── java/com/abdimaalik/clinic ├── controller │ ├── AppointmentController.java │ └── GlobalExceptionHandler.java │ ├── service │ └── ClinicService.java │ ├── repository │ └── AppointmentRepository.java │ ├── domain │ └── Appointment.java │ ├── dto │ ├── AppointmentResponseDTO.java │ └── ErrorResponse.java │ └── ClinicSchedulingApplication.java
-└── resources └── db/migration ├── V1__create_appointments_table.sql ├── V2__add_fee_to_appointments.sql └── V3__...
-
+src/
+└── main/
+    └── resources/
+        └── db/migration/
+            ├── V1__create_appointments_table.sql
+            ├── V2__add_fee_to_appointments.sql
+            └── V3__...
 
 ---
 
