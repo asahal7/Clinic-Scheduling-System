@@ -91,18 +91,19 @@ src/
 ---
 ```
 
-# ⚙️ Tech Stack
+## ⚙️ Tech Stack
 
 | Technology | Purpose |
 |-----------|---------|
-| Java 21 | Core programming language |
-| Spring Boot | Backend framework |
-| Spring Web | REST API support |
-| Spring Data JPA | ORM layer |
-| PostgreSQL | Relational database |
-| Flyway | Database migrations |
-| Maven | Dependency management |
-| JUnit / Spring Test | Integration testing |
+| Java 21 | Primary language for backend development |
+| Spring Boot | Application framework for building RESTful services |
+| Spring Web | HTTP request handling and API layer |
+| Spring Data JPA | ORM for database interaction and repository abstraction |
+| PostgreSQL | Relational database for persistent storage |
+| Flyway | Version-controlled database schema migrations |
+| Redis | In-memory caching layer to improve read performance |
+| Maven | Build automation and dependency management |
+| JUnit & Spring Test | Integration and application-layer testing |
 
 ---
 
@@ -238,14 +239,6 @@ centralized exception handling
 integration testing
 pagination and filtering
 
-🔮 Future Improvements
-Potential extensions include:
-clinician availability schedules
-waitlist management
-appointment rescheduling
-authentication & authorization
-caching frequently accessed schedules
-Docker deployment
 
 👨‍💻 Author
 Abdimaalik Sahal
