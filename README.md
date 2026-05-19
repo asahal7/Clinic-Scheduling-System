@@ -1,122 +1,80 @@
-# 🏥 Clinic Scheduling & Waitlist Engine
+# Clinic Scheduling & Waitlist Engine
 
-A backend scheduling system for managing clinic appointments with strict overlap prevention, validation, and RESTful APIs.
-
-Built using **Java, Spring Boot, PostgreSQL, Flyway, and JPA**, this project simulates a production-style backend service for handling medical appointment scheduling.
-
-The system ensures that **clinicians cannot be double-booked**, supports **pagination and filtering**, and provides **structured API error handling**.
+A backend appointment scheduling system built in Java and Spring Boot, designed around the concurrency and correctness problems that make booking systems hard in practice — double-booking prevention, waitlist automation, and consistent state under concurrent requests.
 
 ---
 
-# 🚀 Features
+## Architecture
 
-## Appointment Scheduling
-- Create appointments for patients with clinicians
-- Prevent overlapping appointments for the same clinician
-- Validate time ranges and input data
-- Automatically generate unique appointment IDs (UUID)
-
-## Advanced API Capabilities
-- Pagination for large appointment datasets
-- Filtering appointments by clinician or patient
-- Structured JSON error responses
-- DTO-based API responses (no entity leakage)
-
-## Database & Persistence
-- PostgreSQL relational database
-- Flyway database migrations
-- JPA / Hibernate ORM mapping
-- Connection pooling with HikariCP
-
-## Production-style backend practices
-- Layered architecture
-- Global exception handling
-- Integration testing
-- RESTful API design
-
----
-
-# 🏗️ Architecture
-
-The application follows a standard **layered backend architecture**:
-
-Controller Layer │ ▼ Service Layer (business logic) │ ▼ Repository Layer (Spring Data JPA) │ ▼ PostgreSQL Database
-
-
-### Key Components
-
-| Layer | Responsibility |
-|------|----------------|
-| Controller | Handles HTTP requests and responses |
-| Service | Business logic and validation |
-| Repository | Database access using JPA |
-| Domain | Core entities (Appointment, Patient, Clinician) |
-| DTO | Clean API response models |
-| Exception Handler | Centralised API error responses |
-
----
-## 📂 Project Structure
-
-```text
-src/
-└── main/
-    └── java/com/abdimaalik/clinic/
-        ├── controller/
-        │   ├── AppointmentController.java
-        │   └── GlobalExceptionHandler.java
-        │
-        ├── service/
-        │   └── ClinicService.java
-        │
-        ├── repository/
-        │   └── AppointmentRepository.java
-        │
-        ├── domain/
-        │   └── Appointment.java
-        │
-        ├── dto/
-        │   ├── AppointmentResponseDTO.java
-        │   └── ErrorResponse.java
-        │
-        └── ClinicSchedulingApplication.java
-
-src/
-└── main/
-    └── resources/
-        └── db/migration/
-            ├── V1__create_appointments_table.sql
-            ├── V2__add_fee_to_appointments.sql
-            └── V3__...
-
----
+```
+┌─────────────────┐        ┌──────────────────┐        ┌──────────────┐
+│   REST Client   │───────▶│  Spring Boot API  │───────▶│  PostgreSQL  │
+└─────────────────┘        └──────────────────┘        └──────────────┘
+                                    │
+                                    ▼
+                             ┌──────────────┐
+                             │    Redis     │
+                             │   (Cache)    │
+                             └──────────────┘
 ```
 
-## ⚙️ Tech Stack
+**Controller Layer** — handles HTTP requests, input validation, and structured error responses.
 
-| Technology | Purpose |
-|-----------|---------|
-| Java 21 | Primary language for backend development |
-| Spring Boot | Application framework for building RESTful services |
-| Spring Web | HTTP request handling and API layer |
-| Spring Data JPA | ORM for database interaction and repository abstraction |
-| PostgreSQL | Relational database for persistent storage |
-| Flyway | Version-controlled database schema migrations |
-| Redis | In-memory caching layer to improve read performance |
-| Maven | Build automation and dependency management |
-| JUnit & Spring Test | Integration and application-layer testing |
+**Service Layer** — business logic, overlap prevention, waitlist promotion, and invariant enforcement.
+
+**Repository Layer** — Spring Data JPA with pessimistic locking for concurrent booking safety.
 
 ---
 
-# 📡 API Endpoints
+## Key Engineering Decisions
 
-## Create Appointment
+**Pessimistic locking** — double-booking is prevented at the database level via SELECT FOR UPDATE. This ensures two simultaneous booking requests for the same clinician slot cannot both succeed, regardless of timing.
 
-POST /appointments
+**Waitlist engine** — when an appointment is cancelled, the system automatically promotes the next waitlisted patient into the freed slot. Promotion is transactional to prevent race conditions.
 
+**Redis cache-aside pattern** — read-heavy endpoints are served from Redis where possible. Cache is invalidated on booking, cancellation, or rescheduling.
+
+**Flyway migrations** — schema changes are versioned and applied automatically at startup, ensuring reproducible environments across local and CI.
+
+**DTO boundary** — entities are never leaked through the API layer. All responses use DTOs with a clean separation between persistence and transport models.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Java 21 |
+| Framework | Spring Boot |
+| Database | PostgreSQL |
+| ORM | Spring Data JPA + Hibernate |
+| Cache | Redis |
+| Migrations | Flyway |
+| Build | Maven |
+| Testing | JUnit 5 · Spring Integration Tests |
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/appointments` | Book a new appointment |
+| GET | `/appointments` | List appointments (paginated, filterable) |
+| GET | `/appointments/{id}` | Get appointment by ID |
+| DELETE | `/appointments/{id}` | Cancel appointment |
+
+Filtering:
+
+```
+GET /appointments?clinicianName=Dr Smith
+GET /appointments?patientName=Alice Johnson
+GET /appointments?page=0&size=10
+```
 
 Example request:
 
-```json
+```
 {
   "patientName": "Alice Johnson",
   "clinicianName": "Dr Smith",
@@ -124,123 +82,75 @@ Example request:
   "endTime": "2026-03-20T10:30:00",
   "fee": 75.00
 }
+```
 
-Example response:
+Error responses are structured and centralised via GlobalExceptionHandler:
 
-{
-  "id": "9b5d1c21-3b44-4d1a-9a20-cc2d97fa87a1",
-  "patientName": "Alice Johnson",
-  "clinicianName": "Dr Smith",
-  "startTime": "2026-03-20T10:00:00",
-  "endTime": "2026-03-20T10:30:00",
-  "fee": 75.00
-}
-
-
-Get All Appointments
-Supports pagination.
-
-GET /appointments?page=0&size=10
-
-
-Filter Appointments
-Filter by clinician:
-
-GET /appointments?clinicianName=Dr Smith
-
-Filter by patient:
-
-GET /appointments?patientName=Alice Johnson
-
-
-Get Appointment by ID
-
-GET /appointments/{id}
-
-
-Delete Appointment
-
-DELETE /appointments/{id}
-
-
-❌ Error Handling
-The API returns structured error responses when requests fail.
-Example:
-
+```
 {
   "timestamp": "2026-03-19T10:12:34",
   "message": "Appointment overlaps with an existing appointment"
 }
+```
 
-Errors are handled centrally via the GlobalExceptionHandler.
+---
 
-🔄 Database Migrations
-The project uses Flyway for versioned schema migrations.
-Example migrations:
+## Project Structure
 
-V1__create_appointments_table.sql
-V2__add_fee_to_appointments.sql
+```
+src/main/java/com/abdimaalik/clinic/
+├── controller/
+├── service/
+├── repository/
+├── domain/
+├── dto/
+└── ClinicSchedulingApplication.java
 
-Flyway automatically applies migrations at application startup.
+src/main/resources/db/migration/
+├── V1__create_appointments_table.sql
+└── V2__add_fee_to_appointments.sql
+```
 
-🧪 Testing
-Integration tests verify:
-Appointment creation
-Overlap prevention
-API endpoints
-Database persistence
-Example test class:
+---
 
-AppointmentControllerIntegrationTest
+## Running Locally
 
-Run tests with:
+Prerequisites: PostgreSQL running locally.
 
-mvn test
+```
+git clone https://github.com/asahal7/clinic-scheduling-system.git
+cd clinic-scheduling-system
 
+psql -U postgres -c "CREATE DATABASE clinic_db;"
+```
 
-▶️ Running the Project Locally
-1. Clone repository
+Configure src/main/resources/application.properties:
 
-git clone https://github.com/asahal7/Clinic-Scheduling-System.git
-
-2. Start PostgreSQL
-Create the database:
-
-CREATE DATABASE clinic_db;
-
-3. Configure application.properties
-Example configuration:
-
+```
 spring.datasource.url=jdbc:postgresql://localhost:5432/clinic_db
 spring.datasource.username=postgres
 spring.datasource.password=yourpassword
-
 spring.jpa.hibernate.ddl-auto=validate
 spring.flyway.enabled=true
+```
 
-4. Run the application
+Run the application:
 
+```
 mvn spring-boot:run
+```
 
-Server starts at:
+Server starts at http://localhost:8080. Flyway applies migrations automatically on startup.
 
-http://localhost:8080
+Run tests:
 
+```
+mvn test
+```
 
-🧠 Backend Concepts Demonstrated
-This project demonstrates practical backend engineering concepts including:
-REST API design
-layered architecture
-database migrations
-input validation
-conflict detection (scheduling overlaps)
-DTO usage
-centralized exception handling
-integration testing
-pagination and filtering
+---
 
+## Connect
 
-👨‍💻 Author
-Abdimaalik Sahal
-Computer Science & Mathematics Queen Mary University of London
-
+- LinkedIn: [abdimaalik-sahal](https://linkedin.com/in/abdimaalik-sahal-33bbab336/)
+- GitHub: [asahal7](https://github.com/asahal7)
